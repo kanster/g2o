@@ -142,23 +142,23 @@ int main(int argc, const char* argv[])
   cout << "DENSE: "<<  DENSE << endl;
 
 
-
-  g2o::SparseOptimizer optimizer;
-  optimizer.setVerbose(false);
-  g2o::BlockSolver_6_3::LinearSolverType * linearSolver;
+  g2o::SparseOptimizer optimizer;           // start optimiser
+  optimizer.setVerbose(true);              // set output verbose
+  g2o::BlockSolver_6_3::LinearSolverType * linearSolver;    //
   if (DENSE)
   {
         linearSolver= new g2o::LinearSolverDense<g2o::BlockSolver_6_3::PoseMatrixType>();
-		cerr << "Using DENSE" << endl;
+        cerr << "Using DENSE" << endl;
   }
   else
   {
 #ifdef G2O_HAVE_CHOLMOD
-	cerr << "Using CHOLMOD" << endl;
+    // the default solver is CHOLMOD
+    cerr << "Using CHOLMOD" << endl;
     linearSolver = new g2o::LinearSolverCholmod<g2o::BlockSolver_6_3::PoseMatrixType>();
 #elif defined G2O_HAVE_CSPARSE
     linearSolver = new g2o::LinearSolverCSparse<g2o::BlockSolver_6_3::PoseMatrixType>();
-	cerr << "Using CSPARSE" << endl;
+    cerr << "Using CSPARSE" << endl;
 #else
 #error neither CSparse nor Cholmod are available
 #endif
@@ -166,11 +166,11 @@ int main(int argc, const char* argv[])
 
 
   g2o::BlockSolver_6_3 * solver_ptr
-      = new g2o::BlockSolver_6_3(linearSolver);
+      = new g2o::BlockSolver_6_3(linearSolver);     // solver for 6/3
 
   g2o::OptimizationAlgorithmLevenberg* solver = new g2o::OptimizationAlgorithmLevenberg(solver_ptr);
 
-  optimizer.setAlgorithm(solver);
+  optimizer.setAlgorithm(solver);   // set solver type
 
   // set up 500 points
   vector<Vector3d> true_points;
@@ -184,6 +184,7 @@ int main(int argc, const char* argv[])
 
   Vector2d focal_length(500,500); // pixels
   Vector2d principal_point(320,240); // 640x480 image
+  /** @todo what is baselnie */
   double baseline = 0.075;      // 7.5 cm baseline
 
 
