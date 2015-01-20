@@ -38,6 +38,13 @@
 #include "g2o/stuff/command_args.h"
 #include "g2o/core/factory.h"
 
+#include "g2o/core/sparse_optimizer.h"
+#include "g2o/core/block_solver.h"
+#include "g2o/core/optimization_algorithm_gauss_newton.h"
+#include "g2o/core/optimization_algorithm_levenberg.h"
+#include "g2o/solvers/csparse/linear_solver_csparse.h"
+
+
 using namespace std;
 using namespace g2o;
 
@@ -89,8 +96,12 @@ int main (int argc, char** argv)
     rotNoise(i, i) = std::pow(noiseRotation[i], 2);
 
   Eigen::Matrix<double, 6, 6> information = Eigen::Matrix<double, 6, 6>::Zero();
-  information.block<3,3>(0,0) = transNoise.inverse();
-  information.block<3,3>(3,3) = rotNoise.inverse();
+  /** Block of size (p,q), starting at (i,j)
+    * matrix.block(i,j,p,q);
+    * matrix.block<p,q>(i,j);
+    */
+  information.block<3,3>(0,0) = transNoise.inverse();   // another way to set topLeftCorner
+  information.block<3,3>(3,3) = rotNoise.inverse();     // given start x, and width height
 
   vector<VertexSE3*> vertices;
   vector<EdgeSE3*> odometryEdges;	
@@ -211,6 +222,31 @@ int main (int argc, char** argv)
     e->write(fout);
     fout << endl;
   }
+
+  // optimise sphere
+  BlockSolverX::LinearSolverType * linearSolver = new  LinearSolverCSparse<BlockSolverX::PoseMatrixType>();
+  BlockSolverX * blockSolver = new BlockSolverX( linearSolver );
+  OptimizationAlgorithmLevenberg * optimisationAlgorithm = new OptimizationAlgorithmLevenberg(blockSolver);
+  SparseOptimizer optimiser;
+  optimiser.setVerbose( true );
+  optimiser.setAlgorithm( optimisationAlgorithm );
+  // add robot vertex to optimiser
+  for ( size_t i = 0; i < vertices.size(); ++ i )
+      optimiser.addVertex( vertices[i] );
+  // add robot odometry to optimiser
+  for ( size_t i = 0; i < odometryEdges.size(); ++ i )
+      optimiser.addEdge( odometryEdges[i] );
+  for ( size_t i = 0; i < edges.size(); ++ i )
+      optimiser.addEdge( edges[i] );
+  optimiser.save( "sphere_before.g2o" );
+
+  cerr << "Optimizing" << endl;
+  optimiser.initializeOptimization();
+  optimiser.optimize(10);
+  cerr << "done." << endl;
+  optimiser.save("sphere_after.g2o");
+  optimiser.clear();
+
 
   return 0;
 }
